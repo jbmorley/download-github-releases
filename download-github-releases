@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 
 
 verbose = '--verbose' in sys.argv[1:] or '-v' in sys.argv[1:]
@@ -26,22 +27,39 @@ class Release(object):
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("repository")
     parser.add_argument("destination")
+
     options = parser.parse_args()
     destination = os.path.abspath(options.destination)
-    releases = subprocess.check_output(["gh", "release", "list"]).decode("utf-8").strip().split("\n")
-    releases = [Release(*(release.split("\t"))) for release in releases]
-    for release in releases:
-        release_path = os.path.join(destination, release.tag)
-        if os.path.exists(release_path):
-            logging.debug("Skipping '%s'...", release.tag)
-            continue
-        try:
-            os.makedirs(release_path)
-            logging.info("Downloading '%s'...", release.tag)
-            subprocess.check_call(["gh", "release", "download", release.tag, "--dir", release_path])
-        except:
-            shutil.rmtree(release_path)
+
+    with tempfile.TemporaryDirectory() as name:
+        logging.info(f"Cloning {options.repository}...")
+        os.chdir(name)
+        subprocess.check_call([
+            "git", "clone",
+            "--depth", "1",
+            "--quiet",
+            options.repository,
+            "repo"])
+        os.chdir(os.path.join(name, "repo"))
+
+        logging.info("Checking for new releases...")
+        releases = subprocess.check_output(["gh", "release", "list"]).decode("utf-8").strip().split("\n")
+        releases = [Release(*(release.split("\t"))) for release in releases]
+        for release in releases:
+            release_path = os.path.join(destination, release.tag)
+            if os.path.exists(release_path):
+                logging.debug("Skipping '%s'...", release.tag)
+                continue
+            try:
+                os.makedirs(release_path)
+                logging.info("Downloading '%s'...", release.tag)
+                subprocess.check_call(["gh", "release", "download", release.tag, "--dir", release_path])
+            except:
+                shutil.rmtree(release_path)
+
+        logging.info("Done.")
 
 
 if __name__ == "__main__":
