@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import json
 import logging
 import os
 import shutil
@@ -9,8 +10,28 @@ import sys
 import tempfile
 
 
+class Filter(logging.Filter):
+
+    def __init__(self, levels):
+        self.levels = levels
+
+    def filter(self, record):
+        return record.levelno in self.levels
+
+
+class StreamHandler(logging.StreamHandler):
+
+    def __init__(self, stream, levels):
+        super().__init__(stream)
+        self.addFilter(Filter(levels))
+        self.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+
+
 verbose = '--verbose' in sys.argv[1:] or '-v' in sys.argv[1:]
-logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO, format="[%(levelname)s] %(message)s")
+root = logging.getLogger()
+root.setLevel(logging.DEBUG)
+root.addHandler(StreamHandler(stream=sys.stdout, levels=[logging.INFO] + ([logging.DEBUG] if verbose else [])))
+root.addHandler(StreamHandler(stream=sys.stderr, levels=[logging.WARNING, logging.ERROR, logging.CRITICAL]))
 
 
 class Release(object):
@@ -52,12 +73,22 @@ def main():
             if os.path.exists(release_path):
                 logging.debug("Skipping '%s'...", release.tag)
                 continue
+            # Check to see if there are any assets.
+            assets = json.loads(subprocess.check_output(["gh",
+                                                         "release",
+                                                         "view", release.tag,
+                                                         "--json", "assets"]).decode('utf-8'))
+            if not assets["assets"]:
+                logging.info("Skipping release '%s' with 0 assets...", release.tag)
+                continue
             try:
                 os.makedirs(release_path)
                 logging.info("Downloading '%s'...", release.tag)
-                subprocess.check_call(["gh", "release", "download", release.tag, "--dir", release_path])
-            except:
+                subprocess.check_call(["gh", "release", "download", release.tag, "--dir", release_path],
+                                      stderr=subprocess.STDOUT)
+            except Exception as e:
                 shutil.rmtree(release_path)
+                raise e
 
         logging.info("Done.")
 
