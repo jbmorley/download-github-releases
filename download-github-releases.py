@@ -36,23 +36,21 @@ import tempfile
 import time
 import urllib.parse
 
+from email.message import Message
+
 import requests
 
 
-def download_file(url, path):
-    headers = {
-        "Accept": "application/octet-stream",
-        "X-GitHub-Api-Version": "2022-11-28",
-    }
-    if "GITHUB_TOKEN" in os.environ:
-        headers["Authorization"] = f"Bearer {os.environ["GITHUB_TOKEN"]}"
+ACCEPT_JSON = "application/vnd.github+json"
+ACCEPT_STREAM = "application/octet-stream"
 
+
+def download_file(url, path, accept=ACCEPT_STREAM):
     logging.info("Downloading '%s'...", url)
-
     filename = os.path.basename(path)
     with tempfile.TemporaryDirectory() as directory:
         temporary_path = os.path.join(directory, filename)
-        response = get_with_backoff(url, headers=headers, stream=True)
+        response = perform_with_backoff(requests.get, url, accept, stream=True)
         response.raise_for_status()
         with open(temporary_path, 'wb') as f:
             for chunk in response.iter_content(chunk_size=1024):
@@ -122,13 +120,20 @@ class Sleeper:
             print("\r", end="")
 
 
-def get_with_backoff(url, *args, **kwargs):
+def perform_with_backoff(fn, url, accept, *args, **kwargs):
+    if "headers" not in kwargs:
+        kwargs["headers"] = {}
+    kwargs["headers"]["Accept"] = accept
+    kwargs["headers"]["X-GitHub-Api-Version"] = "2022-11-28"
+    kwargs["allow_redirects"] = True
+    if "GITHUB_TOKEN" in os.environ:
+        kwargs["headers"]["Authorization"] = f"Bearer {os.environ["GITHUB_TOKEN"]}"
     sleeper = Sleeper()
     duration = 8
     while True:
         logging.debug(f"GET {url}")
         try:
-            response = requests.get(url, *args, **kwargs)
+            response = fn(url, *args, **kwargs)
             if not response.status_code in [403, 429, 502, 504]:
                 break
         except http.client.RemoteDisconnected:
@@ -141,18 +146,8 @@ def get_with_backoff(url, *args, **kwargs):
     return response
 
 
-def get(url, *args, **kwargs):
-    if "headers" not in kwargs:
-        kwargs["headers"] = {}
-    kwargs["headers"]["Accept"] = "application/vnd.github+json"
-    kwargs["headers"]["X-GitHub-Api-Version"] = "2022-11-28"
-    if "GITHUB_TOKEN" in os.environ:
-        kwargs["headers"]["Authorization"] = f"Bearer {os.environ["GITHUB_TOKEN"]}"
-    return get_with_backoff(url, *args, **kwargs)
-
-
 def gh_release_assets(url, filter=lambda x: True):
-    assets = requests.get(url).json()["assets"]
+    assets = perform_with_backoff(requests.get, url, ACCEPT_JSON).json()["assets"]
     urls = [asset["browser_download_url"] for asset in assets if filter(asset["name"])]
     return urls
 
@@ -164,13 +159,13 @@ def gh_releases(repository):
 
 
 def get_paginated(url, *args, **kwargs):
-    response = get(url, *args, **kwargs)
+    response = perform_with_backoff(requests.get, url, ACCEPT_JSON, *args, **kwargs)
     while True:
         for item in response.json():
             yield item
         if not "next" in response.links:
             return
-        response = get(response.links["next"]["url"], *args, **kwargs)
+        response = perform_with_backoff(requests.get, response.links["next"]["url"], ACCEPT_JSON, *args, **kwargs)
 
 
 def configure_logging():
@@ -200,6 +195,7 @@ def main():
         epilog="Set the GITHUB_TOKEN environment variable to use token-based authentication. This is required for accessing private repositories and can help with API rate limits."
     )
     parser.add_argument('--verbose', '-v', action='store_true', default=False, help="show verbose output")
+    parser.add_argument('--download-source', '-s', action='store_true', default=False, help="also download source for each release")
     parser.add_argument("--output", required=True, help="output directory")
     parser.add_argument("repository", nargs="+", help="GitHub repository to fetch releases from")
     options = parser.parse_args()
@@ -224,6 +220,25 @@ def main():
                 fh.write(f"# {release["name"]}\n\n")
                 fh.write(release["body"])
                 fh.write("\n")
+
+            # Download the source if requested.
+            if options.download_source:
+                # N.B. The GitHub API rejects application/octet-stream for this particular file end-point, so we say we
+                # accept JSON...
+                # Unfortunately GitHub makes our lives fairly difficult here by apparently not offering us any clear
+                # lightweight way to determine if the source has changed (e.g., if our tag now points to a different
+                # sha). With that in mind, we get the head for the file and trust GitHub to continue tagging the
+                # source downloads with the git sha (files appear to be of the form
+                # inseven-reporter-0.1.7-0-gf63690a.tar.gz).
+                tarball_url = release["tarball_url"]
+                response = perform_with_backoff(requests.head, tarball_url, ACCEPT_JSON)
+                message = Message()
+                message['content-disposition'] = response.headers['content-disposition']
+                source_filename = message.get_filename()
+                source_path = os.path.join(release_directory, source_filename)
+                if not os.path.exists(source_path):
+                    logging.info("Downloading source '%s'...", source_filename)
+                    download_file(tarball_url, source_path, accept=ACCEPT_JSON)
 
             for asset in release["assets"]:
                 asset_url = asset["url"]
