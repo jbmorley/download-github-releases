@@ -1,100 +1,27 @@
-#!/usr/bin/env python3
+#!/bin/bash
 
-import argparse
-import json
-import logging
-import os
-import shutil
-import subprocess
-import sys
-import tempfile
+# Copyright (c) 2021-2026 Jason Morley
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
+DIRECTORY="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+NAME=`basename "$0"`
 
-class Filter(logging.Filter):
-
-    def __init__(self, levels):
-        self.levels = levels
-
-    def filter(self, record):
-        return record.levelno in self.levels
-
-
-class StreamHandler(logging.StreamHandler):
-
-    def __init__(self, stream, levels):
-        super().__init__(stream)
-        self.addFilter(Filter(levels))
-        self.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
-
-
-verbose = '--verbose' in sys.argv[1:] or '-v' in sys.argv[1:]
-root = logging.getLogger()
-root.setLevel(logging.DEBUG)
-root.addHandler(StreamHandler(stream=sys.stdout, levels=[logging.INFO] + ([logging.DEBUG] if verbose else [])))
-root.addHandler(StreamHandler(stream=sys.stderr, levels=[logging.WARNING, logging.ERROR, logging.CRITICAL]))
-
-
-class Release(object):
-
-    def __init__(self, title, status, tag, date):
-        self.title = title,
-        self.statuts = status
-        self.tag = tag
-        self.date = date
-
-    def __str__(self):
-        return self.tag
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("repository")
-    parser.add_argument("destination")
-
-    options = parser.parse_args()
-    destination = os.path.abspath(options.destination)
-
-    with tempfile.TemporaryDirectory() as name:
-        logging.info(f"Cloning {options.repository}...")
-        os.chdir(name)
-        subprocess.check_call([
-            "git", "clone",
-            "--depth", "1",
-            "--quiet",
-            options.repository,
-            "repo"])
-        os.chdir(os.path.join(name, "repo"))
-
-        logging.info("Checking for new releases...")
-        releases = subprocess.check_output(["gh",
-                                            "release",
-                                            "list",
-                                            "--limit", "99999"]).decode("utf-8").strip().split("\n")
-        releases = [Release(*(release.split("\t"))) for release in releases]
-        for release in releases:
-            release_path = os.path.join(destination, release.tag)
-            if os.path.exists(release_path):
-                logging.debug("Skipping '%s'...", release.tag)
-                continue
-            # Check to see if there are any assets.
-            assets = json.loads(subprocess.check_output(["gh",
-                                                         "release",
-                                                         "view", release.tag,
-                                                         "--json", "assets"]).decode('utf-8'))
-            if not assets["assets"]:
-                logging.info("Skipping release '%s' with 0 assets...", release.tag)
-                continue
-            try:
-                os.makedirs(release_path)
-                logging.info("Downloading '%s'...", release.tag)
-                subprocess.check_call(["gh", "release", "download", release.tag, "--dir", release_path],
-                                      stderr=subprocess.STDOUT)
-            except Exception as e:
-                shutil.rmtree(release_path)
-                raise e
-
-        logging.info("Done.")
-
-
-if __name__ == "__main__":
-    main()
+export PIPENV_PIPFILE="${DIRECTORY}/Pipfile"
+pipenv run python3 "${DIRECTORY}/${NAME}.py" "$@"
