@@ -125,9 +125,9 @@ def perform_with_backoff(fn, url, accept, *args, **kwargs):
         kwargs["headers"] = {}
     kwargs["headers"]["Accept"] = accept
     kwargs["headers"]["X-GitHub-Api-Version"] = "2022-11-28"
-    kwargs["allow_redirects"] = True
     if "GITHUB_TOKEN" in os.environ:
         kwargs["headers"]["Authorization"] = f"Bearer {os.environ["GITHUB_TOKEN"]}"
+    kwargs["allow_redirects"] = True
     sleeper = Sleeper()
     duration = 8
     while True:
@@ -230,7 +230,12 @@ def main():
                 # sha). With that in mind, we get the head for the file and trust GitHub to continue tagging the
                 # source downloads with the git sha (files appear to be of the form
                 # inseven-reporter-0.1.7-0-gf63690a.tar.gz).
+                # Even more of a mess is the fact that the release JSON doesn't always contain a valid tarball URL, so
+                # we do our best to construct one in this scenario.
                 tarball_url = release["tarball_url"]
+                if tarball_url is None:
+                    logging.warning("Missing source URL for '%s'; guessing...", release["tag_name"])
+                    tarball_url = f"https://api.github.com/repos/{repository}/tarball/{release["tag_name"]}"
                 response = perform_with_backoff(requests.head, tarball_url, ACCEPT_JSON)
                 message = Message()
                 message['content-disposition'] = response.headers['content-disposition']
