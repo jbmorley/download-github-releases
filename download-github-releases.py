@@ -234,7 +234,7 @@ def main():
                 # we do our best to construct one in this scenario.
                 tarball_url = release["tarball_url"]
                 if tarball_url is None:
-                    logging.warning("Missing source URL for '%s'; guessing...", release["tag_name"])
+                    logging.info("Missing source URL for '%s'; guessing...", release["tag_name"])
                     tarball_url = f"https://api.github.com/repos/{repository}/tarball/{release["tag_name"]}"
                 response = perform_with_backoff(requests.head, tarball_url, ACCEPT_JSON)
                 message = Message()
@@ -260,10 +260,10 @@ def main():
                             logging.debug("Skipping '%s' (matching digests)...", asset_url)
                             continue
                         else:
-                            logging.warning("e-downloading '%s' (digests differ)...", asset_url)
+                            logging.warning("Re-downloading '%s' (digests differ)...", asset_url)
                 else:
                     if os.path.exists(asset_path):
-                        logging.warning("Asset is missing a digest, relying on file size...")
+                        logging.info("Asset is missing a digest, relying on file size...")
                         size = os.path.getsize(asset_path)
                         if size == asset["size"]:
                             logging.debug("Skipping '%s' (matching sizes)...", asset_url)
