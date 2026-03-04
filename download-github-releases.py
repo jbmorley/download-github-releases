@@ -90,6 +90,12 @@ def shasum(path):
         return sha256.hexdigest()
 
 
+def shasum_string(string):
+    sha256 = hashlib.sha256()
+    sha256.update(string.encode('utf-8'))
+    return sha256.hexdigest()
+
+
 def spinning_cursor():
     while True:
         for cursor in ["zzzz", "Zzzz", "zZzz", "zzZz", "zzzZ"]:
@@ -216,10 +222,12 @@ def main():
                 json.dump(release, fh, indent=4)
                 fh.write("\n")
 
-            with open(os.path.join(release_directory, "_description.md"), "w") as fh:
-                fh.write(f"# {release["name"]}\n\n")
-                fh.write(release["body"])
-                fh.write("\n")
+            description = f"# {release["name"]}\n\n{release["body"]}\n"
+            description_path = os.path.join(release_directory, "_description.md")
+            if not os.path.exists(description_path) or shasum(description_path) != shasum_string(description):
+                logging.info("Updating description...")
+                with open(description_path, "w") as fh:
+                    fh.write(description)
 
             # Download the source if requested.
             if options.download_source:
