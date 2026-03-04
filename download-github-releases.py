@@ -218,9 +218,12 @@ def main():
             release_directory = os.path.join(repository_directory, release["tag_name"])
             os.makedirs(release_directory, exist_ok=True)
 
-            with open(os.path.join(release_directory, "_release.json"), "w") as fh:
-                json.dump(release, fh, indent=4)
-                fh.write("\n")
+            release_json = f"{json.dumps(release, indent=4)}\n"
+            release_json_path = os.path.join(release_directory, "_release.json")
+            if not os.path.exists(release_json_path) or shasum(release_json_path) != shasum_string(release_json):
+                logging.info("Updating JSON...")
+                with open(release_json_path, "w") as fh:
+                    fh.write(release_json)
 
             description = f"# {release["name"]}\n\n{release["body"]}\n"
             description_path = os.path.join(release_directory, "_description.md")
