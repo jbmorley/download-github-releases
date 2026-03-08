@@ -218,6 +218,10 @@ def main():
             release_directory = os.path.join(repository_directory, release["tag_name"])
             os.makedirs(release_directory, exist_ok=True)
 
+            # Remove `download_count` from the assets as this isn't stable.
+            for asset in release["assets"]:
+                asset.pop("download_count", None)
+
             release_json = f"{json.dumps(release, sort_keys=True, indent=4)}\n"
             release_json_path = os.path.join(release_directory, "_release.json")
             if not os.path.exists(release_json_path) or shasum(release_json_path) != shasum_string(release_json):
