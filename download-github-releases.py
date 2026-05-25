@@ -284,7 +284,7 @@ def main():
                             logging.debug("Skipping '%s' (matching sizes)...", asset_url)
                             continue
                         else:
-                            logging.warning("Re-downloading '%s' (sizes differ)...", asset_url)
+                            logging.warning("Re-downloading '%s' (sizes differ; %d != %d)...", asset_url, size, asset["size"])
 
                 download_file(asset_url, asset_path)
 
