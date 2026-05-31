@@ -275,7 +275,7 @@ def main():
                             logging.debug("Skipping '%s' (matching digests)...", asset_url)
                             continue
                         else:
-                            logging.warning("Re-downloading '%s' (digests differ)...", asset_url)
+                            logging.warning("Re-downloading '%s' to '%s' (digests differ)...", asset_url, asset_path)
                 else:
                     if os.path.exists(asset_path):
                         logging.info("Asset is missing a digest, relying on file size...")
@@ -284,7 +284,7 @@ def main():
                             logging.debug("Skipping '%s' (matching sizes)...", asset_url)
                             continue
                         else:
-                            logging.warning("Re-downloading '%s' (sizes differ; %d != %d)...", asset_url, size, asset["size"])
+                            logging.warning("Re-downloading '%s' to '%s' (sizes differ)...", asset_url, asset_path)
 
                 download_file(asset_url, asset_path)
 
