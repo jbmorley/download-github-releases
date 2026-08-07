@@ -20,8 +20,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-ROOT_DIRECTORY="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-SOURCE_DIRECTORY="$ROOT_DIRECTORY/src"
+set -e
+set -o pipefail
+set -x
+set -u
 
-export PIPENV_PIPFILE="$ROOT_DIRECTORY/Pipfile"
-PYTHONPATH="$SOURCE_DIRECTORY" pipenv run python3 -m download_github_releases "$@"
+SCRIPTS_DIRECTORY="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+ROOT_DIRECTORY="$SCRIPTS_DIRECTORY/.."
+RELEASE_SCRIPT="$SCRIPTS_DIRECTORY/gh-release.sh"
+
+WHEEL=`ls dist/download_github_releases-*.whl`
+
+pipenv run changes --verbose release --skip-if-empty --push --exec "$RELEASE_SCRIPT" "$WHEEL"

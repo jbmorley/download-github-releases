@@ -5,9 +5,9 @@ Script to download all the releases for GitHub projects
 ## Usage
 
 ```plaintext
-usage: download-github-releases.py [-h] [--verbose] [--download-source]
-                                   --output OUTPUT
-                                   repository [repository ...]
+usage: download-github-releases [-h] [--verbose] [--download-source]
+                                --output OUTPUT
+                                repository [repository ...]
 
 Download (and keep in sync) the releases from a set of GitHub projects.
 

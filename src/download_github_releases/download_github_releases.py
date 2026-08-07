@@ -197,6 +197,7 @@ def configure_logging():
 def main():
     configure_logging()
     parser = argparse.ArgumentParser(
+        prog="download-github-releases",
         description="Download (and keep in sync) the releases from a set of GitHub projects.",
         epilog="Set the GITHUB_TOKEN environment variable to use token-based authentication. This is required for accessing private repositories and can help with API rate limits."
     )
