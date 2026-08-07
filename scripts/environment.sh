@@ -20,8 +20,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-ROOT_DIRECTORY="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-SOURCE_DIRECTORY="$ROOT_DIRECTORY/src"
+ROOT_DIRECTORY="$( cd "$( dirname "$( dirname "${BASH_SOURCE[0]}" )" )" &> /dev/null && pwd )"
 
+export LOCAL_TOOLS_PATH="$ROOT_DIRECTORY/.local"
+
+export PYTHONUSERBASE="$LOCAL_TOOLS_PATH/python"
+mkdir -p "$PYTHONUSERBASE"
+export PATH="$PYTHONUSERBASE/bin":$PATH
+export PYTHONPATH=$PYTHONUSERBASE
+
+export WORKON_HOME="$LOCAL_TOOLS_PATH"
+export PIPENV_CUSTOM_VENV_NAME="venv"
+export PIPENV_IGNORE_VIRTUALENVS=1
+export PIPENV_VENV_IN_PROJECT=0
 export PIPENV_PIPFILE="$ROOT_DIRECTORY/Pipfile"
-PYTHONPATH="$SOURCE_DIRECTORY" pipenv run python3 -m download_github_releases "$@"
+
