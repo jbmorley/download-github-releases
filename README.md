@@ -37,3 +37,7 @@ Set the GITHUB_TOKEN environment variable to use token-based authentication.
 This is required for accessing private repositories and can help with API rate
 limits.
 ```
+
+## License
+
+download-github-releases is licensed under the MIT License (see [LICENSE](https://github.com/jbmorley/download-github-releases/blob/main/LICENSE)).
