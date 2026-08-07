@@ -1,5 +1,7 @@
 # download-github-releases
 
+[![build](https://github.com/jbmorley/download-github-releases/actions/workflows/build.yaml/badge.svg)](https://github.com/jbmorley/download-github-releases/actions/workflows/build.yaml)
+
 Script to download all the releases for GitHub projects
 
 ## Usage
