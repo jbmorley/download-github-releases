@@ -4,6 +4,16 @@
 
 Script to download all the releases for GitHub projects
 
+## Installation
+
+download-github-releases is available via [PyPI](https://pypi.org/project/download-github-releases/).
+
+Install it using your Python package manager of choice. For example, using [uv](https://docs.astral.sh/uv/):
+
+```bash
+uv tool install download-github-releases
+```
+
 ## Usage
 
 ```plaintext
