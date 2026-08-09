@@ -27,5 +27,4 @@ set -u
 
 WHEEL=`ls dist/download_github_releases-*.whl`
 
-pip3 install "$WHEEL"
-which download-github-releases
+uv run --no-project --with "$WHEEL" download-github-releases --help

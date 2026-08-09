@@ -23,5 +23,4 @@
 ROOT_DIRECTORY="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 SOURCE_DIRECTORY="$ROOT_DIRECTORY/src"
 
-export PIPENV_PIPFILE="$ROOT_DIRECTORY/Pipfile"
-PYTHONPATH="$SOURCE_DIRECTORY" pipenv run python3 -m download_github_releases "$@"
+uv run --no-project --with "$SOURCE_DIRECTORY" download-github-releases "$@"
